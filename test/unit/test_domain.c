@@ -3,7 +3,6 @@
 
 #include "domain.h"
 
-/* @verifies TPL-FUN-001 */
 
 void setUp(void) {}
 void tearDown(void) {}

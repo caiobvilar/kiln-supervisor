@@ -1,0 +1,65 @@
+# docs/requirements/kiln.yaml
+# Requirements for kiln-supervisor. Scaffolded project — no code yet.
+# All requirements are draft; code will be written against these after G1 review.
+- id: KILN-FUN-001
+  text: >
+    The Modbus RTU client shall implement the KM5P_r0 register map to read
+    live temperature, setpoints, and status, and to write firing program
+    parameters and start/stop commands.
+  type: functional
+  rationale: >
+    N-01 requires remote control of the KM5P_r0 via its RS-485/Modbus RTU
+    interface. The register map is the contract between this firmware and
+    the kiln controller.
+  parent: N-01
+  priority: shall
+  verification: test
+  status: draft
+- id: KILN-FUN-002
+  text: >
+    The safety interlock shall require an explicit human confirmation step
+    before any remote "start firing" command is transmitted over the RS-485
+    link.
+  type: functional
+  rationale: >
+    N-02 requires safety by design for a remote command that can initiate a
+    1300 °C kiln firing unattended. The confirmation step is a second factor
+    independent of the network path.
+  parent: N-02
+  priority: shall
+  verification: test
+  status: draft
+- id: KILN-PER-001
+  text: >
+    The round-trip latency from a dashboard command to RS-485 frame transmission
+    shall not exceed 500 ms under nominal WiFi conditions.
+  type: performance
+  rationale: >
+    N-03 requires responsive supervisory control. 500 ms is the upper bound
+    for a human-perceived "instant" response over a typical WiFi LAN.
+  parent: N-03
+  priority: shall
+  verification: test
+  status: draft
+- id: KILN-INT-001
+  text: >
+    The Modbus client shall communicate with the UART port through the port
+    interface without hardware-specific code.
+  type: interface
+  rationale: >
+    N-04 requires host-testable domain logic per the architecture rule.
+  parent: N-04
+  priority: shall
+  verification: analysis
+  status: draft
+- id: KILN-CON-001
+  text: >
+    The domain code shall compile on the host without any hardware or vendor
+    includes.
+  type: constraint
+  rationale: >
+    N-04 requires the layering rule to be enforceable by CI.
+  parent: N-04
+  priority: should
+  verification: analysis
+  status: draft
