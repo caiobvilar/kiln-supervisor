@@ -3,7 +3,6 @@
 
 #include "domain.h"
 
-
 void setUp(void) {}
 void tearDown(void) {}
 
