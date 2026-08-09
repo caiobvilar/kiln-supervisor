@@ -24,8 +24,15 @@ INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[>"]', re.M)
 
 # Domain may pull in: its own headers, port interfaces, stdlib, and vendor
 # libraries that are explicitly hardware-free.
-ALLOWED_PREFIXES = ("src/", "<std", "<string", "<math", "<float", "<limits",
-                    "<stdint", "<stdlib", "<stdbool", "<assert", "<stddef")
+# NOTE: the INCLUDE_RE regex strips angle brackets, so stdlib headers appear
+# as bare names (e.g., "stdint.h", "math.h"). Include both bare names and
+# the prefix forms for compatibility.
+ALLOWED_PREFIXES = (
+    "src/", "stdint.h", "math.h", "stdbool.h", "string.h", "stdlib.h",
+    "assert.h", "stddef.h", "limits.h", "float.h", "complex.h", "tgmath.h",
+    "ctype.h", "wchar.h", "wctype.h", "setjmp.h", "signal.h", "time.h",
+    "errno.h", "locale.h", "inttypes.h", "uchar.h",
+)
 
 
 def main() -> int:

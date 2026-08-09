@@ -1,47 +1,84 @@
-# embedded-template — the reusable infra for every project repo
+# kiln-supervisor — RS-485/Modbus supervisory node for a 1300 °C kiln
 
-This is the engineering platform behind all 20 projects of the embedded
-portfolio program ([portfolio meta-repo](https://github.com/caiobvilar/Embedded_Portfolio)):
-the CMake toolchain files, CI pipelines, requirements tooling, fake HAL, and
-doc skeletons that make a new project repo start already-green.
+**A WiFi-connected supervisory node that commands an existing industrial
+KM5P_r0 kiln controller over RS-485/Modbus RTU, with a cloud dashboard — the
+protocol research is done and verified against vendor documents; the comms
+driver is gated on a bench read-back of the real unit.**
 
-It exists so that **consistency across repos is itself a signal** — every
-project repo uses the same build, the same gates, the same doc structure, so
-an interviewer (or future-me) can orient in 30 seconds.
+The KM5P_r0 keeps running the kiln's PID loop. This project is the
+remote-control and telemetry layer in front of it: firing-program
+upload/start/stop, setpoints, live temperature and alarm readback, exposed
+through a dashboard — and the honest engineering that got there: the COEL
+manual alone had no register map, so the actual Ascon Tecnologic Modbus
+protocol document was obtained from COEL's technical support and its register
+table is recorded with full provenance in this repo.
 
-## What's inside
+> **Status: migrated scaffold.** No code yet, and deliberately so — the
+> register map is documented but `unverified` until a bench read-back against
+> the physical unit. This is an interlock-relevant project: nothing that can
+> command a 1300 °C kiln is flashed or powered without a human present and a
+> safety case written.
+
+## What this demonstrates
+
+| | |
+|---|---|
+| **Comms** | Modbus RTU client (function codes 03/06/16, CRC-16) over an isolated RS-485 link |
+| **Integration** | Interfacing an existing industrial controller on its own protocol — no reimplementation |
+| **Safety** | Remote-command path with confirmation steps; interlock discipline for kiln-control hardware |
+| **Process** | Protocol sourcing under a real vendor gap; provenance-tracked register facts |
+
+## Headline facts (verified vs pending)
+
+| Fact | Value | Status |
+|---|---|---|
+| RS-485 link | Isolated (50 V), Modbus RTU, 8N1, 1200–38400 baud | **verified** — COEL manual §2.4 |
+| Wiring | D− = terminal 6, D+ = terminal 5 | **verified** — COEL manual |
+| PV register | register 1 (0x0001), live measured temperature | documented — **pending bench read-back** |
+| Instrument address | 1–254 (`Add`), corroborated across both vendor docs | documented — **pending bench read-back** |
+
+Full provenance in [docs/hardware/km5p-controller.md](docs/hardware/km5p-controller.md).
+
+## Architecture (planned)
+
+```
+cloud dashboard ◄── WiFi module ──► STM32F4 ◄──RS-485──► KM5P_r0 (runs the kiln)
+    (MQTT / HTTPS,    (ESP32/ESP8266,    (Modbus RTU client,   (existing controller,
+     to be decided)    part to be chosen) CRC-16, reg map)      PID + heater)
+```
+
+## Repository layout
 
 | Path | Contents |
 |---|---|
-| `cmake/` | `arm-none-eabi.cmake` (cross toolchain, pin by board), `host.cmake` (native + ASAN/UBSAN + coverage helpers) |
-| `.github/workflows/` | `ci.yml`, `sitl.yml`, `hil.yml`, `release.yml` — the four pipelines, parameterised |
-| `tools/` | `gen_rtm.py` (requirements↔tests RTM gate), `check_layering.py`, `check_size_budget.py`, `sign_image.py` (Ed25519) |
-| `src/ports/` | Hexagonal port interfaces: `i_uart.h`, `i_spi.h`, `i_i2c.h`, `i_clock.h` |
-| `src/adapters/host/` | Test doubles for the ports (recording fake UART, scripted clock) |
-| `templates/docs/` | SRS, test-plan, design-review-checklist, project-README skeletons |
-| `Containerfile.toolchain` + `requirements.*` | Reproducible toolchain container (pin everything, hash-locked Python deps) |
-| `.clang-format` `.clang-tidy` `.cppcheck-suppressions` | Zero-warning static-analysis posture |
+| `src/domain/` | Modbus RTU framing, CRC-16, register encode/decode — host-testable |
+| `src/ports/` | RS-485 UART interface + host fake |
+| `src/adapters/` | Real + fake transport implementations |
+| `docs/adr/` | Toolchain decisions (0001, 0003) |
+| `docs/hardware/` | KM5P_r0 protocol sheet + STM32F411E-DISCO sheet |
 
-## Create a new project repo from this template
+## Build and run
 
-```bash
-# on GitHub, "Use this template" -- or:
-gh repo create <project-slug> --template caiobvilar/embedded-template --public
-```
+Not yet buildable — no CMake project exists, and by design no comms code until
+the register map is bench-verified. SRS + G1 come first.
 
-Then:
-1. Write `docs/02-srs.md` (from `templates/docs/srs-template.md`) and
-   `docs/requirements/*.yaml` — **before any code** (program rule 1).
-2. Set the flash/RAM budgets in `ci.yml`'s size-gate step and the target in
-   `cmake/arm-none-eabi.cmake` (per-board `-mcpu`).
-3. Generate the CubeMX project into `cubemx/` for the firmware half (see the
-   portfolio's ADR pattern for the CubeMX/CMake integration boundary).
-4. Put pure logic in `src/domain/` (host-testable), hardware in
-   `src/adapters/stm32f4/`, interfaces in `src/ports/`.
-5. `cmake --preset host-test && ctest --preset host-test` — the loop is
-   milliseconds, so you actually run it.
+## Documentation
+
+- [PLAN.md](PLAN.md) — durable state, the protocol saga, open questions, log
+- [docs/hardware/km5p-controller.md](docs/hardware/km5p-controller.md) — the RS-485 facts and the Modbus register map with provenance
+
+## What I'd do differently
+
+- The first scaffold assumed the COEL manual would be enough to write a
+  Modbus driver. It wasn't — no register map, no live-temperature register.
+  The cost of that assumption was a full search campaign; the correct first
+  move was to request the protocol document from the vendor up front.
+- The order-code variant question (does this unit even have RS-485?) should
+  have been checked on the nameplate before any protocol work — it still is
+  not confirmed, and it gates whether any of the wiring facts apply.
 
 ## License
 
-Code and tooling: **Apache-2.0** · Documentation: **CC BY 4.0**
-(per the program's publishing rules, 06-publishing §2.3).
+Code: **Apache-2.0** (`LICENSE`) · Documentation: **CC BY 4.0**
+(`docs/LICENSE-docs.md`) — per the program's publishing rules
+([06-publishing.md §2.3](https://github.com/caiobvilar/Embedded_Portfolio/blob/main/06-publishing.md)).
