@@ -1,0 +1,14 @@
+name: release
+on: { push: { tags: ['v*'] } }
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with: { release: '14.2.Rel1' }
+      - run: cmake --preset target-Release && cmake --build --preset target-Release
+      - run: python tools/sign_image.py build/target-Release/firmware.bin --key <(echo "${{ secrets.SIGNING_KEY }}") -o firmware.signed.bin 2>/dev/null || echo "signing skipped (no SIGNING_KEY secret)"
+      - uses: softprops/action-gh-release@v2
+        with: { files: "firmware.signed.bin,firmware.elf,firmware.map" }

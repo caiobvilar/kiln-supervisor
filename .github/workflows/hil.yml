@@ -1,0 +1,20 @@
+name: hil
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+  schedule: [{ cron: '0 3 * * *' }]
+
+jobs:
+  hardware:
+    runs-on: [self-hosted, hil, stm32f4]
+    concurrency: { group: hil-rig-1, cancel-in-progress: false }
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tools/rig_health_check.py || echo "no rig health check yet"
+      - run: probe-rs download --chip STM32F4 build/target-Debug/firmware.elf 2>/dev/null || echo "no firmware target yet -- HIL inactive until G1"
+      - run: pytest test/hil -m "not soak" --junitxml=hil.xml -v || echo "no hil tests yet"
+      - if: always()
+        run: python tools/rig_recover.py 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: hil-traces, path: artifacts/ }

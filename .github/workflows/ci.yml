@@ -1,0 +1,83 @@
+name: ci
+on: [push, pull_request]
+
+# The L1 gate suite. Every job here must pass; this is the CI contract that
+# gives the rest of the portfolio credibility (03-toolchain.md §4.1).
+#
+# The firmware `build` job needs the STM32CubeMX export (cubemx/) to exist;
+# until a project generates it, the cross build produces the domain library
+# alone, so the size gate and artifact steps are conditional on firmware.elf.
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config: [debug, release]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with: { release: '14.2.Rel1' }
+      - run: cmake --preset target-${{ matrix.config }}
+      - run: cmake --build --preset target-${{ matrix.config }}
+      - name: Size report + budget gate (only when firmware target exists)
+        if: hashFiles('build/target-${{ matrix.config }}/firmware.elf') != ''
+        run: |
+          arm-none-eabi-size -A build/target-${{ matrix.config }}/firmware.elf | tee size.txt
+          python tools/check_size_budget.py size.txt --flash-max 65536 --ram-max 20480
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('build/target-${{ matrix.config }}/firmware.elf') != ''
+        with:
+          name: fw-${{ matrix.config }}
+          path: build/target-${{ matrix.config }}/firmware.{elf,bin,map}
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcovr
+      - name: Fetch Unity (pinned)
+        run: |
+          git clone --depth 1 --branch v2.7.0 https://github.com/ThrowTheSwitch/Unity.git /opt/unity
+      - run: cmake --preset host-test && cmake --build --preset host-test && ctest --preset host-test --output-junit results.xml
+      - name: Coverage (≥80% on domain code)
+        run: |
+          cmake -S . -B build/coverage --preset host-test -DENABLE_COVERAGE=ON
+          cmake --build build/coverage
+          ctest --test-dir build/coverage --output-junit coverage-tests.xml
+          gcovr --filter 'src/' --fail-under-line 80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: host-results, path: 'results.xml' }
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Unity (pinned)
+        run: |
+          git clone --depth 1 --branch v2.7.0 https://github.com/ThrowTheSwitch/Unity.git /opt/unity
+      - run: cmake --preset host-asan && cmake --build --preset host-asan && ctest --preset host-asan
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cppcheck clang-tidy clang-format
+      - name: Fetch Unity (pinned) + build compile_commands.json
+        run: |
+          git clone --depth 1 --branch v2.7.0 https://github.com/ThrowTheSwitch/Unity.git /opt/unity
+          cmake --preset host-test
+      - run: cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --suppressions-list=.cppcheck-suppressions src/
+      - run: clang-tidy -p build/host-test src/domain/*.c src/adapters/host/*.c
+      - run: clang-format --dry-run --Werror $(find src test -name '*.[ch]')
+
+  requirements:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt
+      - run: python tools/gen_rtm.py check
+      - run: python tools/check_layering.py

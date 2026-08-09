@@ -1,0 +1,104 @@
+# Toolchain image for the agent's execution surface.
+#
+# Pin everything. The verification ladder is only meaningful if a green gate
+# means the same thing next month as it does today — and if a failure the agent
+# sees is a failure you can reproduce.
+#
+# Deliberately has no USB access and no privileged flags. Flashing happens on
+# the host via benchd, reached through a bind-mounted socket.
+#
+# Built and run with rootless Podman (Fedora default — no daemon, no docker
+# group, SELinux-confined by default). Build with `podman build`, which reads
+# this Containerfile identically to how `docker build` would:
+#
+#   podman build -t workbench-toolchain -f Containerfile.toolchain .
+#
+# Run with the project mounted and the benchd socket bind-mounted in.
+# `--userns=keep-id` keeps files the container writes owned by your normal
+# user instead of a subuid-mapped ghost; `:Z` relabels the mounts for
+# SELinux so the confined container can actually read/write them:
+#
+#   podman run --rm -it \
+#     --userns=keep-id \
+#     -v "$PWD":/w:Z -w /w \
+#     -v "$XDG_RUNTIME_DIR/benchd.sock":/run/benchd.sock:Z \
+#     workbench-toolchain
+#
+# See AGENTS.md and .harness/bench/tools.md for why the socket lives under
+# $XDG_RUNTIME_DIR rather than /run — rootless podman has no write access to
+# the latter, and benchd should not need root either.
+
+FROM debian:bookworm-20250630-slim
+
+ARG ARM_GCC_VERSION=13.2.rel1
+ARG RENODE_VERSION=1.15.3
+ARG GTEST_VERSION=1.15.2
+ARG UNITY_VERSION=2.7.0
+ARG CMOCK_VERSION=2.7.0
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH="/opt/arm-gnu-toolchain/bin:/opt/venv/bin:${PATH}" \
+    UNITY_DIR=/opt/unity \
+    CMOCK_DIR=/opt/cmock
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential cmake ninja-build git ca-certificates curl xz-utils \
+      python3 python3-pip python3-venv ruby \
+      cppcheck clang-tidy clang-format \
+      libncurses5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ARM bare-metal toolchain
+RUN curl -fsSL -o /tmp/arm.tar.xz \
+      "https://developer.arm.com/-/media/Files/downloads/gnu/${ARM_GCC_VERSION}/binrel/arm-gnu-toolchain-${ARM_GCC_VERSION}-x86_64-arm-none-eabi.tar.xz" \
+    && mkdir -p /opt/arm-gnu-toolchain \
+    && tar -xJf /tmp/arm.tar.xz -C /opt/arm-gnu-toolchain --strip-components=1 \
+    && rm /tmp/arm.tar.xz \
+    && arm-none-eabi-gcc --version
+
+# Renode for L3 emulation
+RUN curl -fsSL -o /tmp/renode.deb \
+      "https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb" \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends /tmp/renode.deb \
+    && rm /tmp/renode.deb && rm -rf /var/lib/apt/lists/*
+
+# Host-side C++ test framework (GoogleTest/GoogleMock). Built from source at
+# image-build time -- the running container has no network (see AGENTS.md/
+# README's split-trust model), so this cannot be pulled in via CMake
+# FetchContent at project-build time; it must already be on disk. Consuming
+# projects use plain `find_package(GTest)` / `find_package(GTest CONFIG)`.
+RUN curl -fsSL "https://github.com/google/googletest/archive/refs/tags/v${GTEST_VERSION}.tar.gz" \
+      | tar -xz -C /tmp \
+    && cmake -S "/tmp/googletest-${GTEST_VERSION}" -B /tmp/gtest-build \
+             -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=ON \
+    && cmake --build /tmp/gtest-build -j \
+    && cmake --install /tmp/gtest-build --prefix /usr/local \
+    && rm -rf /tmp/gtest-build "/tmp/googletest-${GTEST_VERSION}"
+
+# Host-side (and cross-compilable) C test framework. Vendored as source under
+# /opt, not installed as a system lib -- Unity/CMock are designed to be
+# compiled directly into each test binary, including on-target builds where
+# relevant, so projects reference $UNITY_DIR/$CMOCK_DIR rather than linking a
+# prebuilt archive. CMock's mock generator is a Ruby script, hence `ruby`
+# above. See docs/adr/0003-unity-cmock-test-frameworks.md.
+RUN mkdir -p /opt/unity /opt/cmock \
+    && curl -fsSL "https://github.com/ThrowTheSwitch/Unity/archive/refs/tags/v${UNITY_VERSION}.tar.gz" \
+         | tar -xz -C /opt/unity --strip-components=1 \
+    && curl -fsSL "https://github.com/ThrowTheSwitch/CMock/archive/refs/tags/v${CMOCK_VERSION}.tar.gz" \
+         | tar -xz -C /opt/cmock --strip-components=1
+
+# Python deps (gcovr, pyyaml) live in a dedicated venv, never system-wide --
+# --break-system-packages was a shortcut, not a decision. requirements.txt is
+# a full hash lock (pip-compile --generate-hashes, resolved against this same
+# base image's Python 3.11 -- see requirements.in and
+# docs/adr/0005-python-venv-and-locked-deps.md); --require-hashes makes an
+# unpinned or tampered transitive dependency a hard build failure, not a
+# silent drift.
+COPY requirements.txt /tmp/requirements.txt
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
+
+WORKDIR /w
+CMD ["/bin/bash"]

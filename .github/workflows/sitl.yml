@@ -1,0 +1,30 @@
+name: sitl
+on: [push]
+
+# Renode as the primary SITL (03-toolchain.md §4.2). We install Renode on the
+# runner rather than running the whole job inside the antmicro/renode image:
+# the image's non-root user cannot write the runner's temp state, which breaks
+# actions/checkout. An empty renode/ dir (no *.robot) passes by design until a
+# project adds its emulated integration tests.
+
+jobs:
+  renode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Renode (pinned)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mono-runtime mono-devel libc6-dev
+          wget -q https://github.com/renode/renode/releases/download/v1.15.3/renode_1.15.3_amd64.deb
+          sudo dpkg -i renode_1.15.3_amd64.deb || sudo apt-get install -f -y
+      - name: Run SITL integration tests
+        run: |
+          if compgen -G "test/integration/renode/*.robot" > /dev/null; then
+            renode-test test/integration/renode/*.robot
+          else
+            echo "no renode tests yet -- SITL gate passes vacuously"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: sitl-logs, path: test/integration/renode/*.html }

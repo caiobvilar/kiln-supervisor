@@ -1,0 +1,33 @@
+# Build outputs
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.a
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Tooling caches
+compile_commands.json
+.cppcheck/
+.cache/
+
+# Generated docs
+docs/06-rtm.md
+docs/07-test-report.md
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Local secrets -- never commit
+*.pem
+signing.key
+*.signed.bin

@@ -1,0 +1,20 @@
+// MISRA C:2012 deviations and third-party suppression patterns.
+// Each entry records the rule, the reason, and the ADR that documents it.
+// Add here, never silence by renaming files.
+
+// cppcheck version-dependent style nits: const-pointer suggestions on cast
+// sites inside the vtable fakes. The fake's ctx pointer is mutable (tests
+// enqueue/advance state), and the vtable callbacks pass non-const self, so the
+// suggestion is not actionable; enabling it would make CI depend on the exact
+// cppcheck version instead of on real defects.
+constVariablePointer
+constParameterPointer
+
+// Domain code that intentionally deviates; the specific deviation is logged
+// next to the suppressed check in the source and in docs/adr/.
+missingIncludeSystem
+unknownMacro
+
+// Vendor HAL and generated CubeMX code are not ours to police.
+*:src/adapters/stm32f4/*
+*:cubemx/*

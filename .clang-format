@@ -1,0 +1,10 @@
+# clang-format -- LLVM base, 4-space indent, 100 columns (03-toolchain.md §1).
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 100
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+PointerAlignment: Left
+SortIncludes: true
+ReflowComments: false

@@ -1,0 +1,58 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "host-test",
+      "displayName": "Host (native) -- L1 unit tests",
+      "binaryDir": "${sourceDir}/build/host-test",
+      "toolchainFile": "${sourceDir}/cmake/host.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "host-asan",
+      "displayName": "Host (native) with ASAN/UBSAN",
+      "binaryDir": "${sourceDir}/build/host-asan",
+      "toolchainFile": "${sourceDir}/cmake/host.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZERS": "ON"
+      }
+    },
+    {
+      "name": "target-debug",
+      "displayName": "Cross (arm-none-eabi) Debug -- L0 firmware",
+      "binaryDir": "${sourceDir}/build/target-debug",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "target-release",
+      "displayName": "Cross (arm-none-eabi) Release -- L0 firmware",
+      "binaryDir": "${sourceDir}/build/target-release",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "renode",
+      "displayName": "Cross Debug for Renode emulation (L2 SITL)",
+      "binaryDir": "${sourceDir}/build/renode",
+      "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "host-test", "configurePreset": "host-test" },
+    { "name": "host-asan", "configurePreset": "host-asan" },
+    { "name": "target-debug", "configurePreset": "target-debug" },
+    { "name": "target-release", "configurePreset": "target-release" },
+    { "name": "renode", "configurePreset": "renode" }
+  ],
+  "testPresets": [
+    { "name": "host-test", "configurePreset": "host-test", "output": { "outputOnFailure": true } },
+    { "name": "host-asan", "configurePreset": "host-asan", "output": { "outputOnFailure": true } }
+  ]
+}
