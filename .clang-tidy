@@ -8,7 +8,6 @@ Checks: >
   portability-*,
   readability-braces-around-statements,
   readability-else-after-return,
-  readability-non-const-parameter,
   readability-redundant-*,
   readability-simplify-boolean-expr,
   -bugprone-branch-clone,
