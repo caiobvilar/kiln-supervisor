@@ -9,7 +9,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 # gate exercises on the native compiler with no MCU or CubeMX dependency.
 # Domain code may not include anything hardware-specific (see
 # tools/check_layering.py).
-add_library(domain STATIC src/domain/domain.c)
+add_library(domain STATIC src/domain/domain.c src/domain/modbus_crc.c)
 target_include_directories(domain PUBLIC include src/domain src/ports)
 target_link_libraries(domain PUBLIC m)
 
