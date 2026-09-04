@@ -1,6 +1,6 @@
 # docs/requirements/kiln.yaml
-# Requirements for kiln-supervisor. Scaffolded project — no code yet.
-# All requirements are draft; code will be written against these after G1 review.
+# Requirements for kiln-supervisor.
+# Some requirements are draft; others have been approved against passing code.
 - id: KILN-FUN-001
   text: >
     The Modbus RTU client shall implement the KM5P_r0 register map to read
@@ -50,8 +50,10 @@
     N-04 requires host-testable domain logic per the architecture rule.
   parent: N-04
   priority: shall
-  verification: analysis
-  status: draft
+  verification: test
+  status: approved
+  test_case:
+    - test/unit/test_modbus_frame.c
 - id: KILN-CON-001
   text: >
     The domain code shall compile on the host without any hardware or vendor
@@ -62,4 +64,20 @@
   parent: N-04
   priority: should
   verification: analysis
-  status: draft
+  status: approved
+- id: KILN-FUN-003
+  text: >
+    The Modbus client shall build and validate Modbus RTU frames with CRC-16
+    for function codes 03, 06, and 16, bounding multi-register transfers to
+    sixteen registers.
+  type: functional
+  rationale: >
+    N-01 requires a Modbus RTU client; framing and CRC-16 (Ascon doc §3.5.1)
+    are the wire contract, host-testable without hardware.
+  parent: N-01
+  priority: shall
+  verification: test
+  status: approved
+  test_case:
+    - test/unit/test_modbus_crc.c
+    - test/unit/test_modbus_frame.c

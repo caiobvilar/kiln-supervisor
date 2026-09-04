@@ -6,8 +6,9 @@
 | Version | 1.0 |
 | Status | draft |
 
-This SRS is forward-looking: the project has no code yet (scaffolded state).
-All requirements are in draft status and will be baselined at G1 review.
+This SRS has requirements in both draft and approved status. Approved
+requirements have code and tests in place; draft requirements will be
+baselined as code is written.
 
 ## 1. Purpose and scope
 
@@ -29,7 +30,7 @@ status readback, alarms) through a cloud-hosted dashboard.
 ## 3. Definitions and abbreviations
 
 - **Modbus RTU** — Serial protocol (CRC-16, 9600/19200/38400 baud) over RS-485.
-- **KM5P_r0** — Industrial kiln controller with public register map (TBD).
+- **KM5P_r0** — Industrial kiln controller; register map obtained 2026-07-30 (see `docs/hardware/km5p-controller.md`).
 - **L1 gate** — Host (native) unit-test gate.
 
 ## 4. System context
@@ -43,8 +44,9 @@ project is a telemetry/remote-command layer.
 
 - Safety: the safety interlock (N-02) is mandatory — no remote firing without
   human confirmation. See AGENTS.md Safety Interlocks.
-- KM5P_r0 register map is not yet extracted (no public doc); this is an open
-  blocker before code can be written.
+- KM5P_r0 register map was obtained from Ascon Tecnologic via COEL support
+  on 2026-07-30 and recorded in `docs/hardware/km5p-controller.md`. Register
+  values remain unverified pending bench testing against the physical unit.
 - Board choice (F411-DISCO) is a placeholder; I/O count for UART+RS485+WiFi
   must be verified before commit.
 
@@ -58,29 +60,32 @@ project is a telemetry/remote-command layer.
 2. **KILN-FUN-002** (shall) — The safety interlock shall require an explicit
    human confirmation step before any remote "start firing" command is
    transmitted over the RS-485 link.
+3. **KILN-FUN-003** (shall) — The Modbus client shall build and validate Modbus
+   RTU frames with CRC-16 for function codes 03, 06, and 16, bounding
+   multi-register transfers to sixteen registers.
 
 ### 6.2 Performance
 
-3. **KILN-PER-001** (shall) — The round-trip latency from a dashboard command
+4. **KILN-PER-001** (shall) — The round-trip latency from a dashboard command
    to RS-485 frame transmission shall not exceed 500 ms under nominal WiFi
    conditions.
 
 ### 6.3 Interface
 
-4. **KILN-INT-001** (shall) — The Modbus client shall communicate with the
+5. **KILN-INT-001** (shall) — The Modbus client shall communicate with the
    UART port through the port interface without hardware-specific code.
 
 ### 6.4 Constraints
 
-5. **KILN-CON-001** (should) — The domain code shall compile on the host
+6. **KILN-CON-001** (should) — The domain code shall compile on the host
    without any hardware or vendor includes.
 
 ## 7. Verification summary
 
 | Method | Count |
 |---|---|
-| Test | 3 |
-| Analysis | 2 |
+| Test | 5 |
+| Analysis | 1 |
 | Inspection | 0 |
 | Demonstration | 0 |
 
@@ -90,7 +95,7 @@ project is a telemetry/remote-command layer.
 
 | ID | Issue | Owner | Target |
 |---|---|---|---|
-| OI-01 | KM5P_r0 register map not publicly available — must be obtained or reverse-engineered. | Owner | before G1 |
+| OI-01 | KM5P_r0 register map obtained (Ascon Tecnologic doc via COEL support, 2026-07-30) — recorded in `docs/hardware/km5p-controller.md`. Pending bench verification of register values against the physical unit. | Owner | before G1 |
 | OI-02 | WiFi module and RS-485 transceiver parts not yet selected. | Owner | before G1 |
 | OI-03 | Board I/O count (UART + RS485 + WiFi) must be verified against F411-DISCO pinout. | Owner | before G1 |
 

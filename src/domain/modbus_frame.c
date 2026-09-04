@@ -6,25 +6,29 @@
 
 #include "modbus_crc.h"
 
-int modbus_build_request(uint8_t out[], size_t cap, uint8_t addr,
-                         uint8_t fc, uint16_t reg_or_addr, uint16_t value_or_count)
+int modbus_build_request(uint8_t out[], size_t cap, uint8_t addr, uint8_t fc, uint16_t reg_or_addr,
+                         uint16_t value_or_count)
 {
-    if ((fc == MODBUS_FC_READ_MULTIPLE || fc == MODBUS_FC_WRITE_MULTIPLE)
-        && (value_or_count < 1 || value_or_count > 16)) {
+    if ((fc == MODBUS_FC_READ_MULTIPLE || fc == MODBUS_FC_WRITE_MULTIPLE) &&
+        (value_or_count < 1 || value_or_count > 16)) {
         return -1;
     }
     if (cap < 8) {
         return -1;
     }
     uint8_t pdu[8] = {
-        addr, fc,
-        (uint8_t)(reg_or_addr >> 8), (uint8_t)reg_or_addr,
-        (uint8_t)(value_or_count >> 8), (uint8_t)value_or_count,
-        0, 0,
+        addr,
+        fc,
+        (uint8_t)(reg_or_addr >> 8),
+        (uint8_t)reg_or_addr,
+        (uint8_t)(value_or_count >> 8),
+        (uint8_t)value_or_count,
+        0,
+        0,
     };
     uint16_t crc = modbus_crc16(pdu, 6);
-    pdu[6] = (uint8_t)crc;         /* LSB first */
-    pdu[7] = (uint8_t)(crc >> 8);  /* MSB */
+    pdu[6] = (uint8_t)crc;        /* LSB first */
+    pdu[7] = (uint8_t)(crc >> 8); /* MSB */
     for (size_t i = 0; i < 8; ++i) {
         out[i] = pdu[i];
     }
