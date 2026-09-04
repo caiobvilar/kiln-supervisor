@@ -23,3 +23,7 @@ add_test(NAME domain COMMAND test_domain)
 add_executable(test_modbus_crc test_modbus_crc.c)
 target_link_libraries(test_modbus_crc PRIVATE domain unity)
 add_test(NAME modbus_crc COMMAND test_modbus_crc)
+
+add_executable(test_modbus_frame test_modbus_frame.c)
+target_link_libraries(test_modbus_frame PRIVATE domain unity)
+add_test(NAME modbus_frame COMMAND test_modbus_frame)
