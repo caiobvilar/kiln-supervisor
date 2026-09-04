@@ -6,5 +6,6 @@ Commits on tag).
 
 ## [Unreleased]
 
+- feat: add host-testable Modbus RTU framing + CRC-16 domain layer (fc 03/06/16, KILN-FUN-003)
 - Initial template state: CMake toolchain files, CI pipelines, requirements
   tooling, fake HAL, doc skeletons.
