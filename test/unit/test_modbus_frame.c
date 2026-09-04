@@ -1,6 +1,7 @@
 /* test/unit/test_modbus_frame.c -- Modbus RTU ADU build/parse tests. */
 /* @verifies KILN-INT-001 */
 /* @verifies KILN-CON-001 */
+/* @verifies KILN-FUN-003 */
 #include "unity.h"
 
 #include <string.h>

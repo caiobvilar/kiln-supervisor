@@ -44,7 +44,8 @@ int modbus_frame_check(const uint8_t frame[], size_t len, uint8_t addr)
         return -1;
     }
     uint16_t crc = modbus_crc16(frame, len - 2);
-    uint16_t recv = (uint16_t)(frame[len - 1] << 8) | frame[len - 2]; /* LSB first on wire */
+    uint16_t recv =
+        (uint16_t)((uint16_t)frame[len - 1] << 8) | frame[len - 2]; /* LSB first on wire */
     if (crc != recv) {
         return -1;
     }
