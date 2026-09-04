@@ -146,11 +146,11 @@ handoff list — the human answers these between sessions.
 Newest last. One line per session: what moved, what broke, where you stopped.
 
 - `2026-09-03` — Implemented host-testable Modbus domain layer: `modbus_crc` +
-  `modbus_frame` (fc 03/06/16), known-vector L1 tests (no hardware used). Added
-  KILN-FUN-003; approved KILN-INT-001/KILN-CON-001; synced SRS §7 + RTM. Still
-  hardware-blocked: bench-verify register map, order-code variant, board /
-  transceiver / WiFi choices (see Open questions) — comms stays host-only, no
-  kiln-command path (interlock).
+  `modbus_frame` (fc 03/06/16), known-vector L1 tests via fake_uart seam (no
+  hardware used). Added KILN-FUN-003, approved KILN-INT/CON-001, synced SRS §7 +
+  RTM. Still hardware-blocked: bench-verify register map, order-code variant,
+  board/transceiver/WiFi choices (see Open questions) — comms stays host-only,
+  no kiln-command path (interlock).
 - `2026-08-09` — Migrated from workbench `projects/04-kiln-controller` into
   `projects/T3-bootloader-ota/kiln-supervisor` per the program layout. Content
   unchanged; the harness interlock/inventory language is restated in program
