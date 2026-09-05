@@ -99,7 +99,13 @@ arguments before any UART traffic; otherwise one of TIMEOUT/CRC/RESPONSE/UART.
 
 1. Argument check: null pointers, `count` in `[1, MODBUS_CLIENT_MAX_REGS]`,
    `out_cap >= count` (reads). Violation returns ERR_PARAM, no UART traffic.
-2. Build the request with `modbus_build_request` into a stack tx buffer.
+2. Build the request frame. fc 03 and fc 06 use `modbus_build_request` (8-byte
+   ADU). fc 16 needs the variable-length data body, which that helper cannot
+   encode (it only takes a single register/count pair and would emit the
+   response-shaped 8-byte ADU, no data), so the client composes the fc 16 PDU
+   in-line (`addr, fc, start, count, bytecount, 2*count data bytes`) and appends
+   `modbus_crc16`. Known limitation of `modbus_build_request` recorded for a
+   future framing-layer revision; out of scope here.
 3. `uart_write` the whole request; any failure or short write returns ERR_UART.
 4. Derive the expected response length from the request:
    - fc 06 / fc 16: the slave echoes the 8-byte request → `len == 8`.
@@ -134,12 +140,12 @@ Notes:
 
 | Situation                                   | Result                    |
 |---------------------------------------------|---------------------------|
-| Invalid arguments                           | ERR_PARAM, no UART I/O    |
+- Bad arguments                            | ERR_PARAM, no UART I/O    |
 | Write fails / short write                   | ERR_UART                  |
 | No complete frame before deadline           | ERR_TIMEOUT               |
 | Frame completes but CRC bad                 | ERR_CRC, registers unwritten |
 | Wrong addr / bad fc echo / byte-count mismatch | ERR_RESPONSE           |
-| Modbus exception reply (fc 0x80)               | ERR_RESPONSE, immediately |
+| Modbus exception reply (fc 0x80)            | ERR_RESPONSE, immediately   |
 
 ## 7. Testing (L1, host)
 
