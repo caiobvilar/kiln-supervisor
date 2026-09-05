@@ -199,6 +199,79 @@ void test_read_registers_params(void)
     TEST_ASSERT_EQUAL_UINT(0, n);
 }
 
+void test_read_registers_overlength_is_response_error(void)
+{
+    uart_t u;
+    fake_uart_ctx_t uctx;
+    clock_t clk;
+    fake_clock_ctx_t clkctx;
+    modbus_client_t cli;
+    make_client(&u, &uctx, &clk, &clkctx, &cli);
+
+    const uint8_t rsp[] = {0x01, 0x03, 0x06, 0x01, 0x23, 0x45, 0x67,
+                           0x89, 0xAB, 0x67, 0x9F, 0xAA, 0xBB};
+    fake_uart_enqueue_rx(&uctx, rsp, sizeof(rsp));
+
+    uint16_t regs[3] = {0};
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_ERR_RESPONSE,
+                          modbus_client_read_registers(&cli, 0x01, 0x0001, 3, regs, 3));
+    TEST_ASSERT_EQUAL_UINT(uctx.rx_len, uctx.rx_pos);
+
+    const uint8_t expect_tx[] = {0x01, 0x03, 0x00, 0x01, 0x00, 0x03, 0x54, 0x0B};
+    size_t n = 0;
+    const uint8_t* tx = fake_uart_tx_bytes(&uctx, &n);
+    TEST_ASSERT_EQUAL_UINT(8, n);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expect_tx, tx, 8);
+}
+
+void test_read_registers_clean_after_overlength(void)
+{
+    uart_t u;
+    fake_uart_ctx_t uctx;
+    clock_t clk;
+    fake_clock_ctx_t clkctx;
+    modbus_client_t cli;
+    make_client(&u, &uctx, &clk, &clkctx, &cli);
+
+    const uint8_t noisy[] = {0x01, 0x03, 0x06, 0x01, 0x23, 0x45, 0x67,
+                             0x89, 0xAB, 0x67, 0x9F, 0xAA, 0xBB};
+    fake_uart_enqueue_rx(&uctx, noisy, sizeof(noisy));
+    uint16_t regs[3] = {0};
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_ERR_RESPONSE,
+                          modbus_client_read_registers(&cli, 0x01, 0x0001, 3, regs, 3));
+
+    const uint8_t rsp[] = {0x01, 0x03, 0x06, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0x67, 0x9F};
+    fake_uart_enqueue_rx(&uctx, rsp, sizeof(rsp));
+
+    const uint16_t expected[] = {0x0123, 0x4567, 0x89AB};
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_OK,
+                          modbus_client_read_registers(&cli, 0x01, 0x0001, 3, regs, 3));
+    TEST_ASSERT_EQUAL_UINT16_ARRAY(expected, regs, 3);
+
+    const uint8_t expect_tx[] = {0x01, 0x03, 0x00, 0x01, 0x00, 0x03, 0x54, 0x0B};
+    size_t n = 0;
+    const uint8_t* tx = fake_uart_tx_bytes(&uctx, &n);
+    TEST_ASSERT_EQUAL_UINT(16, n);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expect_tx, tx + 8, 8);
+}
+
+void test_read_registers_exception_with_trailing_bytes(void)
+{
+    uart_t u;
+    fake_uart_ctx_t uctx;
+    clock_t clk;
+    fake_clock_ctx_t clkctx;
+    modbus_client_t cli;
+    make_client(&u, &uctx, &clk, &clkctx, &cli);
+
+    const uint8_t exc[] = {0x01, 0x83, 0x02, 0xC0, 0xF1, 0xAA, 0xBB};
+    fake_uart_enqueue_rx(&uctx, exc, sizeof(exc));
+    uint16_t regs[1] = {0};
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_ERR_RESPONSE,
+                          modbus_client_read_registers(&cli, 0x01, 0x0001, 1, regs, 1));
+    TEST_ASSERT_EQUAL_UINT(uctx.rx_len, uctx.rx_pos);
+}
+
 /* A UART whose write always fails, to exercise ERR_UART. */
 typedef struct {
     int unused;
@@ -328,6 +401,9 @@ int main(void)
     RUN_TEST(test_read_registers_rejects_byte_count_mismatch);
     RUN_TEST(test_read_registers_exception_reply_is_response_error);
     RUN_TEST(test_read_registers_params);
+    RUN_TEST(test_read_registers_overlength_is_response_error);
+    RUN_TEST(test_read_registers_clean_after_overlength);
+    RUN_TEST(test_read_registers_exception_with_trailing_bytes);
     RUN_TEST(test_write_single_success);
     RUN_TEST(test_write_multiple_success);
     RUN_TEST(test_write_single_uart_failure);

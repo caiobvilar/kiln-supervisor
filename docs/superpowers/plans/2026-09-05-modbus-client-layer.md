@@ -874,6 +874,10 @@ git commit -m "docs: approve KILN-FUN-004, sync SRS/RTM, log milestone"
 
 ### Task 5: L0 cross-build + static-analysis + coverage gates (toolchain container)
 
+> **Amendment (final-review fix wave):** over-length replies now return
+> ERR_RESPONSE with residual bytes drained (`recv_frame` + `drain_uart`), pinned
+> by three new L1 tests; spec wording aligned with implemented reality.
+
 **Files:**
 - Modify (only if needed / one-time): `Containerfile.toolchain` (cap gtest build parallelism, see step 1)
 - No source changes expected unless a gate flags something (then fix + commit as a separate step).

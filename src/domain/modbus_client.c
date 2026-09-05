@@ -14,28 +14,43 @@ static modbus_client_status_t tx_request(modbus_client_t* c, const uint8_t* fram
     return MODBUS_CLIENT_OK;
 }
 
+static void drain_uart(modbus_client_t* c)
+{
+    while (uart_available(c->uart) > 0) {
+        uint8_t b;
+        if (uart_read(c->uart, &b, 1) < 0) {
+            break;
+        }
+    }
+}
+
 static modbus_client_status_t recv_frame(modbus_client_t* c, size_t expected, size_t* out_len)
 {
     uint64_t deadline = clock_ticks_us(c->clock) + c->response_timeout_us;
     size_t len = 0;
     for (;;) {
+        if (len >= expected) {
+            if (uart_available(c->uart) > 0) {
+                drain_uart(c);
+                return MODBUS_CLIENT_ERR_RESPONSE;
+            }
+            *out_len = len;
+            return MODBUS_CLIENT_OK;
+        }
         if (uart_available(c->uart) > 0) {
             int n = uart_read(c->uart, &c->rx_buf[len], expected - len);
             if (n < 0) {
+                drain_uart(c);
                 return MODBUS_CLIENT_ERR_UART;
             }
             len += (size_t)n;
         }
-        /* No expected reply can have 0x80 set in its fc byte (0x03/0x06/0x16),
-         * so this is unambiguously a slave exception reply. */
         if (len >= 5 && (c->rx_buf[1] & 0x80u)) {
+            drain_uart(c);
             return MODBUS_CLIENT_ERR_RESPONSE;
         }
-        if (len >= expected) {
-            *out_len = len;
-            return MODBUS_CLIENT_OK;
-        }
         if (clock_ticks_us(c->clock) >= deadline) {
+            drain_uart(c);
             return MODBUS_CLIENT_ERR_TIMEOUT;
         }
     }

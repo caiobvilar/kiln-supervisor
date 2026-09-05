@@ -121,6 +121,9 @@ arguments before any UART traffic; otherwise one of TIMEOUT/CRC/RESPONSE/UART.
 6. Validate the complete expected-length frame with `modbus_frame_check(rx_buf, len,
    addr)`; then require `frame[1] == expected fc` and, for fc 03, `frame[2] ==
    2*count`. Failure maps to ERR_CRC (CRC bad) or ERR_RESPONSE (addr/len/fc/byte-count).
+   Over-length replies (bytes still available after the expected frame completes) are
+   ERR_RESPONSE, and the client drains residual received bytes on every
+   TIMEOUT/exception/UART error so no leftover data leaks into a later transaction.
 7. fc 06 / fc 16 success → ERR_OK (nothing further to parse; response echo is
    validated by frame check).
    fc 03 success → extract `count` big-endian register words from `frame[3..]` into
@@ -157,7 +160,9 @@ Notes:
   ERR_TIMEOUT.
 - CRC error: full frame, bad CRC → ERR_CRC; `out` untouched.
 - Wrong address: valid frame for a different slave → ERR_RESPONSE.
-- Byte-count mismatch on fc 03 (excess/short) → ERR_RESPONSE.
+- Byte-count mismatch on fc 03 → ERR_RESPONSE: over-length reply (excess bytes after the expected frame) and same-length byte-count-field mismatch. A short/truncated response times out (ERR_TIMEOUT).
+- Over-length reply → ERR_RESPONSE, with the residual received bytes drained.
+- A consecutive transaction after an over-length reply stays clean (no cross-transaction contamination).
 - Exception reply (`frame[1] & 0x80`) → ERR_RESPONSE immediately, before timeout.
 - Params: count 0 / count 17 / count>cap / NULL out → ERR_PARAM with zero tx bytes.
 - The deadline is computed at poll start (now + timeout), so a "clock already past

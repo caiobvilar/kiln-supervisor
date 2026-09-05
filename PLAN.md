@@ -149,7 +149,10 @@ Newest last. One line per session: what moved, what broke, where you stopped.
   bounded response timeout over the UART port seam, backed by host L1 tests (no
   hardware used); added unverified KM5P_r0 register-constants header; approved
   KILN-FUN-004, synced SRS §7 + RTM. fc16 PDU built in-line by the client
-  because the frame builder can't carry data. Still hardware-blocked:
+  because the frame builder can't carry data. Final-review fix wave: over-length
+  replies return ERR_RESPONSE and residual bytes are drained so a later
+  transaction is never contaminated by leftover data; spec wording aligned with
+  the implemented reality. Still hardware-blocked:
   bench-verify register map, order-code variant, board/transceiver/WiFi
   choices (see Open questions) — comms stays host-only, no kiln-command path
   (interlock).
