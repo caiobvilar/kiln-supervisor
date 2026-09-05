@@ -22,3 +22,11 @@ add_test(NAME modbus_crc COMMAND test_modbus_crc)
 add_executable(test_modbus_frame test_modbus_frame.c)
 target_link_libraries(test_modbus_frame PRIVATE domain unity)
 add_test(NAME modbus_frame COMMAND test_modbus_frame)
+
+add_executable(test_modbus_client test_modbus_client.c)
+target_sources(test_modbus_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/adapters/host/fake_uart.c
+    ${CMAKE_SOURCE_DIR}/src/adapters/host/fake_clock.c)
+target_include_directories(test_modbus_client PRIVATE ${CMAKE_SOURCE_DIR}/src/adapters/host)
+target_link_libraries(test_modbus_client PRIVATE domain unity)
+add_test(NAME modbus_client COMMAND test_modbus_client)

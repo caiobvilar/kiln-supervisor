@@ -5,11 +5,7 @@
  */
 #include <stdint.h>
 
-#include "i_clock.h"
-
-typedef struct {
-    uint64_t ticks;
-} fake_clock_ctx_t;
+#include "fake_clock.h"
 
 static uint64_t fake_ticks(clock_t* c)
 {

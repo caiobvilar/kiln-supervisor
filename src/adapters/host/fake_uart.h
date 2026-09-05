@@ -9,7 +9,13 @@
 
 #include "i_uart.h"
 
-typedef struct fake_uart_ctx_s fake_uart_ctx_t;
+typedef struct {
+    uint8_t rx_buf[512];
+    size_t rx_len;
+    size_t rx_pos;
+    uint8_t tx_buf[512];
+    size_t tx_len;
+} fake_uart_ctx_t;
 
 void fake_uart_init(uart_t* u, fake_uart_ctx_t* ctx);
 void fake_uart_enqueue_rx(fake_uart_ctx_t* ctx, const uint8_t* data, size_t n);
