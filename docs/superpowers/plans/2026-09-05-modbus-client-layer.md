@@ -863,12 +863,12 @@ Expected: all host tests pass; layering prints `OK: 7 domain files, no hardware 
 - [ ] **Step 6: Run the repo gates locally (host tools where available) and commit**
 
 ```bash
-clang-format --dry-run --Werror $(find src test -name '*.[ch]')
-git add docs/requirements/kiln.yaml docs/02-srs.md docs/06-rtm.md PLAN.md CHANGELOG.md
+git add docs/requirements/kiln.yaml docs/02-srs.md PLAN.md CHANGELOG.md
 git commit -m "docs: approve KILN-FUN-004, sync SRS/RTM, log milestone"
 ```
 
-Expected: `clang-format --dry-run` prints nothing and exits 0.
+`docs/06-rtm.md` is gitignored by repo design (generated-only; CI gates on
+`python tools/gen_rtm.py check`) — do not add it to the commit.
 
 ---
 
