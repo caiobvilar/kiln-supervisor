@@ -72,7 +72,7 @@ RUN curl -fsSL "https://github.com/google/googletest/archive/refs/tags/v${GTEST_
       | tar -xz -C /tmp \
     && cmake -S "/tmp/googletest-${GTEST_VERSION}" -B /tmp/gtest-build \
              -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=ON \
-    && cmake --build /tmp/gtest-build -j \
+    && cmake --build /tmp/gtest-build -j2 \
     && cmake --install /tmp/gtest-build --prefix /usr/local \
     && rm -rf /tmp/gtest-build "/tmp/googletest-${GTEST_VERSION}"
 
