@@ -81,3 +81,17 @@
   test_case:
     - test/unit/test_modbus_crc.c
     - test/unit/test_modbus_frame.c
+- id: KILN-FUN-004
+  text: >
+    The Modbus client shall issue read and write requests over the UART port
+    interface and validate the response within a bounded timeout.
+  type: functional
+  rationale: >
+    N-01 requires a Modbus RTU client; request/response with a bounded timeout
+    is host-testable without hardware and prerequisites the register-map layer.
+  parent: N-01
+  priority: shall
+  verification: test
+  status: approved
+  test_case:
+    - test/unit/test_modbus_client.c

@@ -6,19 +6,11 @@
  * projects can switch to CMock-generated mocks -- but it covers the common
  * case with zero tooling.
  */
-#include "i_uart.h"
+#include "fake_uart.h"
 
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-
-typedef struct {
-    uint8_t rx_buf[512];
-    size_t rx_len;
-    size_t rx_pos;
-    uint8_t tx_buf[512];
-    size_t tx_len;
-} fake_uart_ctx_t;
 
 static int fake_write(uart_t* u, const uint8_t* data, size_t n)
 {

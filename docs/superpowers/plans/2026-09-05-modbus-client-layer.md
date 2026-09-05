@@ -84,12 +84,30 @@ git commit -m "feat: add unverified KM5P register constants header"
 
 ### Task 2: Client header + read path (fc 03) + read tests
 
+> **Amendment (controller ruling, in-execution):** the brief as first written could
+> not build: the task tests declare `fake_uart_ctx_t` / `fake_clock_ctx_t` as stack
+> instances, but the fake typedefs are opaque (struct bodies are private to
+> `src/adapters/host/fake_uart.c` / `fake_clock.c`), so the test cannot size a
+> stack variable of an incomplete type; and no CMake target compiled the fakes.
+> Minimal enabling fix that keeps the task's test and implementation verbatim:
+> 1. Open the ctx struct in each fake header (`fake_uart.h`, `fake_clock.h`) —
+>    move the struct body from the `.c` into the header in place of the opaque
+>    `typedef struct ..._s ..._t;` forward declaration.
+> 2. Each fake `.c` includes its own header (replacing its private typedef and
+>    its direct `<i_uart.h>` / `<i_clock.h>` include; the header includes the port
+>    header transitively).
+> 3. `test/unit/CMakeLists.txt` adds `fake_uart.c` + `fake_clock.c` to
+>   `test_modbus_client`'s sources and `src/adapters/host` to its include dirs.
+> Layering gate only scans `src/domain`, so this does not violate it.
+
 **Files:**
 - Create: `src/domain/modbus_client.h`
 - Create: `src/domain/modbus_client.c`
 - Create: `test/unit/test_modbus_client.c`
 - Modify: `CMakeLists.txt:12`
 - Modify: `test/unit/CMakeLists.txt`
+- Modify (amendment): `src/adapters/host/fake_uart.h`, `src/adapters/host/fake_uart.c`
+- Modify (amendment): `src/adapters/host/fake_clock.h`, `src/adapters/host/fake_clock.c`
 
 **Interfaces:**
 - Consumes: `modbus_build_request`, `modbus_frame_check` (from `src/domain/modbus_frame.h`); `modbus_crc16` (`src/domain/modbus_crc.h`); `uart_t`/`uart_write`/`uart_read`/`uart_available` (`src/ports/i_uart.h`); `clock_t`/`clock_ticks_us` (`src/ports/i_clock.h`); host doubles `fake_uart_*`, `fake_clock_*`.
@@ -314,7 +332,8 @@ int main(void)
 }
 ```
 
-- [ ] **Step 2: Wire CMake** — in `CMakeLists.txt:12` change the `domain` sources line to:
+- [ ] **Step 2: Wire CMake and fake contexts** —
+  in `CMakeLists.txt:12` change the `domain` sources line to:
 
 ```cmake
 add_library(domain STATIC src/domain/modbus_crc.c src/domain/modbus_frame.c src/domain/modbus_client.c)
@@ -324,9 +343,17 @@ and at the end of `test/unit/CMakeLists.txt` append:
 
 ```cmake
 add_executable(test_modbus_client test_modbus_client.c)
+target_sources(test_modbus_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/adapters/host/fake_uart.c
+    ${CMAKE_SOURCE_DIR}/src/adapters/host/fake_clock.c)
+target_include_directories(test_modbus_client PRIVATE ${CMAKE_SOURCE_DIR}/src/adapters/host)
 target_link_libraries(test_modbus_client PRIVATE domain unity)
 add_test(NAME modbus_client COMMAND test_modbus_client)
 ```
+
+Then open the fake ctx types (amendment): move the private struct in
+`src/adapters/host/fake_uart.c` into `fake_uart.h` (and `fake_clock.c` into
+`fake_clock.h`), and make each fake `.c` include its own header.
 
 - [ ] **Step 3: Run tests to verify they fail**
 
@@ -836,16 +863,20 @@ Expected: all host tests pass; layering prints `OK: 7 domain files, no hardware 
 - [ ] **Step 6: Run the repo gates locally (host tools where available) and commit**
 
 ```bash
-clang-format --dry-run --Werror $(find src test -name '*.[ch]')
-git add docs/requirements/kiln.yaml docs/02-srs.md docs/06-rtm.md PLAN.md CHANGELOG.md
+git add docs/requirements/kiln.yaml docs/02-srs.md PLAN.md CHANGELOG.md
 git commit -m "docs: approve KILN-FUN-004, sync SRS/RTM, log milestone"
 ```
 
-Expected: `clang-format --dry-run` prints nothing and exits 0.
+`docs/06-rtm.md` is gitignored by repo design (generated-only; CI gates on
+`python tools/gen_rtm.py check`) — do not add it to the commit.
 
 ---
 
 ### Task 5: L0 cross-build + static-analysis + coverage gates (toolchain container)
+
+> **Amendment (final-review fix wave):** over-length replies now return
+> ERR_RESPONSE with residual bytes drained (`recv_frame` + `drain_uart`), pinned
+> by three new L1 tests; spec wording aligned with implemented reality.
 
 **Files:**
 - Modify (only if needed / one-time): `Containerfile.toolchain` (cap gtest build parallelism, see step 1)

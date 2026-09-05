@@ -63,6 +63,9 @@ project is a telemetry/remote-command layer.
 3. **KILN-FUN-003** (shall) — The Modbus client shall build and validate Modbus
    RTU frames with CRC-16 for function codes 03, 06, and 16, bounding
    multi-register transfers to sixteen registers.
+4. **KILN-FUN-004** (shall) — The Modbus client shall issue read and write
+   requests over the UART port interface and validate the response within a
+   bounded timeout.
 
 ### 6.2 Performance
 
@@ -84,7 +87,7 @@ project is a telemetry/remote-command layer.
 
 | Method | Count |
 |---|---|
-| Test | 5 |
+| Test | 6 |
 | Analysis | 1 |
 | Inspection | 0 |
 | Demonstration | 0 |

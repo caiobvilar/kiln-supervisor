@@ -156,19 +156,29 @@ handoff list — the human answers these between sessions.
 
 Newest last. One line per session: what moved, what broke, where you stopped.
 
-- `2026-09-05` — Resolved the order-code/RS-485-variant open question, negative
-  result: a legible nameplate photo gives the full model code
-  `KM5PHCORRD-E--P----`; Communication field is `-` (TTL Modbus only) — this
-  physical unit does NOT carry RS-485 on terminals 5/6. Updated
-  `docs/hardware/km5p-controller.md` (replaces the earlier garbled/ambiguous
-  reading) and PLAN.md open questions. New open question added: pick the
-  hardware path to reach the TTL port (direct UART, external RS-485⇄TTL
-  converter, or reorder the `S`-option unit) — this changes the RS-485
-  transceiver decision and the applicability of the "RS-485 electrical/link
-  parameters" section to this specific unit. Also earlier this session:
-  transcribed the manual's electrical-connections sections (§2.1–2.5) and
-  approved the Modbus client design spec (`modbus_client`, KILN-FUN-004) —
-  not yet implemented.
+- `2026-09-05` — Implemented generic Modbus RTU client layer (fc 03/06/16) with
+  bounded response timeout over the UART port seam, backed by host L1 tests (no
+  hardware used); added unverified KM5P_r0 register-constants header; approved
+  KILN-FUN-004, synced SRS §7 + RTM. fc16 PDU built in-line by the client
+  because the frame builder can't carry data. Final-review fix wave: over-length
+  replies return ERR_RESPONSE and residual bytes are drained so a later
+  transaction is never contaminated by leftover data; spec wording aligned with
+  the implemented reality. Still hardware-blocked:
+  bench-verify register map, order-code variant, board/transceiver/WiFi
+  choices (see Open questions) — comms stays host-only, no kiln-command path
+  (interlock).
+- `2026-09-05` (separate session, merged same day) — Resolved the order-code/
+  RS-485-variant open question, negative result: a legible nameplate photo
+  gives the full model code `KM5PHCORRD-E--P----`; Communication field is `-`
+  (TTL Modbus only) — this physical unit does NOT carry RS-485 on terminals
+  5/6. Updated `docs/hardware/km5p-controller.md` (replaces the earlier
+  garbled/ambiguous reading) and PLAN.md open questions. New open question
+  added: pick the hardware path to reach the TTL port (direct UART, external
+  RS-485⇄TTL converter, or reorder the `S`-option unit) — this changes the
+  RS-485 transceiver decision and the applicability of the "RS-485
+  electrical/link parameters" section to this specific unit. Also
+  transcribed the manual's electrical-connections sections (§2.1–2.5).
+  Merged with the modbus_client branch above (this entry) into `main`.
 - `2026-09-03` — Implemented host-testable Modbus domain layer: `modbus_crc` +
   `modbus_frame` (fc 03/06/16), known-vector L1 tests via fake_uart seam (no
   hardware used). Added KILN-FUN-003, approved KILN-INT/CON-001, synced SRS §7 +
