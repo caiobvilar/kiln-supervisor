@@ -145,6 +145,14 @@ handoff list — the human answers these between sessions.
 
 Newest last. One line per session: what moved, what broke, where you stopped.
 
+- `2026-09-05` — Implemented generic Modbus RTU client layer (fc 03/06/16) with
+  bounded response timeout over the UART port seam, backed by host L1 tests (no
+  hardware used); added unverified KM5P_r0 register-constants header; approved
+  KILN-FUN-004, synced SRS §7 + RTM. fc16 PDU built in-line by the client
+  because the frame builder can't carry data. Still hardware-blocked:
+  bench-verify register map, order-code variant, board/transceiver/WiFi
+  choices (see Open questions) — comms stays host-only, no kiln-command path
+  (interlock).
 - `2026-09-03` — Implemented host-testable Modbus domain layer: `modbus_crc` +
   `modbus_frame` (fc 03/06/16), known-vector L1 tests via fake_uart seam (no
   hardware used). Added KILN-FUN-003, approved KILN-INT/CON-001, synced SRS §7 +
