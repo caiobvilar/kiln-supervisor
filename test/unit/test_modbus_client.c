@@ -199,6 +199,124 @@ void test_read_registers_params(void)
     TEST_ASSERT_EQUAL_UINT(0, n);
 }
 
+/* A UART whose write always fails, to exercise ERR_UART. */
+typedef struct {
+    int unused;
+} fail_uart_ctx_t;
+
+static int fail_write(uart_t* u, const uint8_t* data, size_t n)
+{
+    (void)u;
+    (void)data;
+    (void)n;
+    return -1;
+}
+
+static int fail_read(uart_t* u, uint8_t* data, size_t n)
+{
+    (void)u;
+    (void)data;
+    (void)n;
+    return -1;
+}
+
+static int fail_available(uart_t* u)
+{
+    (void)u;
+    return 0;
+}
+
+static const uart_vtable_t fail_uart_vt = {fail_write, fail_read, fail_available};
+
+static void fail_uart_init(uart_t* u)
+{
+    static fail_uart_ctx_t ctx;
+    ctx.unused = 0;
+    u->vt = &fail_uart_vt;
+    u->ctx = &ctx;
+}
+
+void test_write_single_success(void)
+{
+    uart_t u;
+    fake_uart_ctx_t uctx;
+    clock_t clk;
+    fake_clock_ctx_t clkctx;
+    modbus_client_t cli;
+    make_client(&u, &uctx, &clk, &clkctx, &cli);
+
+    const uint8_t echo[] = {0x01, 0x06, 0x00, 0x01, 0x00, 0x0A, 0x58, 0x0D};
+    fake_uart_enqueue_rx(&uctx, echo, sizeof(echo));
+
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_OK, modbus_client_write_single(&cli, 0x01, 0x0001, 0x000A));
+
+    const uint8_t expect_tx[] = {0x01, 0x06, 0x00, 0x01, 0x00, 0x0A, 0x58, 0x0D};
+    size_t n = 0;
+    const uint8_t* tx = fake_uart_tx_bytes(&uctx, &n);
+    TEST_ASSERT_EQUAL_UINT(8, n);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expect_tx, tx, 8);
+}
+
+void test_write_multiple_success(void)
+{
+    uart_t u;
+    fake_uart_ctx_t uctx;
+    clock_t clk;
+    fake_clock_ctx_t clkctx;
+    modbus_client_t cli;
+    make_client(&u, &uctx, &clk, &clkctx, &cli);
+
+    const uint8_t echo[] = {0x01, 0x16, 0x00, 0x01, 0x00, 0x02, 0x98, 0x08};
+    fake_uart_enqueue_rx(&uctx, echo, sizeof(echo));
+    const uint16_t values[] = {0x0064, 0x00C8};
+
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_OK,
+                          modbus_client_write_multiple(&cli, 0x01, 0x0001, values, 2));
+
+    const uint8_t expect_tx[] = {0x01, 0x16, 0x00, 0x01, 0x00, 0x02, 0x04,
+                                 0x00, 0x64, 0x00, 0xC8, 0x92, 0x35};
+    size_t n = 0;
+    const uint8_t* tx = fake_uart_tx_bytes(&uctx, &n);
+    TEST_ASSERT_EQUAL_UINT(13, n);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expect_tx, tx, 13);
+}
+
+void test_write_single_uart_failure(void)
+{
+    uart_t u;
+    clock_t clk;
+    fake_clock_ctx_t clkctx;
+    modbus_client_t cli;
+    fail_uart_init(&u);
+    fake_clock_init(&clk, &clkctx);
+    modbus_client_init(&cli, &u, &clk, 100000u);
+
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_ERR_UART,
+                          modbus_client_write_single(&cli, 0x01, 0x0001, 0x000A));
+}
+
+void test_write_multiple_params(void)
+{
+    uart_t u;
+    fake_uart_ctx_t uctx;
+    clock_t clk;
+    fake_clock_ctx_t clkctx;
+    modbus_client_t cli;
+    make_client(&u, &uctx, &clk, &clkctx, &cli);
+
+    const uint16_t values[] = {0x0001, 0x0002};
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_ERR_PARAM,
+                          modbus_client_write_multiple(&cli, 0x01, 0x0001, NULL, 2));
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_ERR_PARAM,
+                          modbus_client_write_multiple(&cli, 0x01, 0x0001, values, 0));
+    TEST_ASSERT_EQUAL_INT(MODBUS_CLIENT_ERR_PARAM,
+                          modbus_client_write_multiple(&cli, 0x01, 0x0001, values, 17));
+
+    size_t n = 99;
+    (void)fake_uart_tx_bytes(&uctx, &n);
+    TEST_ASSERT_EQUAL_UINT(0, n);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -210,5 +328,9 @@ int main(void)
     RUN_TEST(test_read_registers_rejects_byte_count_mismatch);
     RUN_TEST(test_read_registers_exception_reply_is_response_error);
     RUN_TEST(test_read_registers_params);
+    RUN_TEST(test_write_single_success);
+    RUN_TEST(test_write_multiple_success);
+    RUN_TEST(test_write_single_uart_failure);
+    RUN_TEST(test_write_multiple_params);
     return UNITY_END();
 }
