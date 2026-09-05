@@ -116,15 +116,26 @@ handoff list — the human answers these between sessions.
       panel's displayed temperature, confirm `Add`/`bAud` (10337/10338) are
       readable/writable as documented, per the provenance rule. This is now
       the actual blocker.
-- [ ] **Confirm order-code variant.** The manual's ordering-code table (§4)
-      shows the "Comunicação" field can be `-` (TTL only) or `S` (RS-485 +
-      TTL). Check the physical unit's nameplate/model code — if it isn't
-      the `S` variant, terminals 5/6 may not carry RS-485 at all.
+- [x] ~~Confirm order-code variant.~~ **RESOLVED 2026-09-05, negative result:**
+      a legible nameplate photo gives the full model code
+      `KM5PHCORRD-E--P----` — Communication field is `-` (TTL Modbus only).
+      **This unit does NOT have RS-485; terminals 5/6 carry no RS-485
+      signal.** This changes the hardware path: either drive the on-board
+      TTL Modbus port directly, add an external RS-485⇄TTL converter at the
+      instrument, or reorder/replace the unit with the `S` option. See
+      `docs/hardware/km5p-controller.md` "Physical unit observations."
 - [x] ~~Resolve the instrument-address range discrepancy~~ — §2.4 says 1–255,
       Appendix A parameter [98] `Add` says 1–254. **Corroborated 2026-07-30**:
       the Ascon protocol document independently states 1–254, so treat
       1–254 as correct. Not yet bench-tested against the real unit's actual
       accepted range.
+- [ ] **New, from the TTL-only finding:** decide the hardware path to reach
+      this unit's TTL Modbus port — on-board STM32 UART direct to TTL levels,
+      an external RS-485⇄TTL converter at the instrument (keeping RS-485 on
+      the STM32F4 side), or reordering/replacing the unit with the `S`
+      (RS-485) option. Affects the transceiver-part decision below and the
+      "RS-485 electrical / link parameters" section's applicability to this
+      physical unit.
 - [ ] Confirm `f411-disco` as the target board, or pick a different STM32F4
       if the I/O budget doesn't fit (RS-485 transceiver + WiFi module,
       concurrently, plus whatever UART/SPI each needs).
@@ -156,6 +167,18 @@ Newest last. One line per session: what moved, what broke, where you stopped.
   bench-verify register map, order-code variant, board/transceiver/WiFi
   choices (see Open questions) — comms stays host-only, no kiln-command path
   (interlock).
+- `2026-09-05` (separate session, merged same day) — Resolved the order-code/
+  RS-485-variant open question, negative result: a legible nameplate photo
+  gives the full model code `KM5PHCORRD-E--P----`; Communication field is `-`
+  (TTL Modbus only) — this physical unit does NOT carry RS-485 on terminals
+  5/6. Updated `docs/hardware/km5p-controller.md` (replaces the earlier
+  garbled/ambiguous reading) and PLAN.md open questions. New open question
+  added: pick the hardware path to reach the TTL port (direct UART, external
+  RS-485⇄TTL converter, or reorder the `S`-option unit) — this changes the
+  RS-485 transceiver decision and the applicability of the "RS-485
+  electrical/link parameters" section to this specific unit. Also
+  transcribed the manual's electrical-connections sections (§2.1–2.5).
+  Merged with the modbus_client branch above (this entry) into `main`.
 - `2026-09-03` — Implemented host-testable Modbus domain layer: `modbus_crc` +
   `modbus_frame` (fc 03/06/16), known-vector L1 tests via fake_uart seam (no
   hardware used). Added KILN-FUN-003, approved KILN-INT/CON-001, synced SRS §7 +
