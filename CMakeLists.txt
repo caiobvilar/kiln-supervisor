@@ -5,6 +5,11 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+# clang-tidy needs a compile database against the container-gate host build dir.
+if(NOT CMAKE_CROSSCOMPILING)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 # ---- Host-testable domain logic. This is the part the L1 (host unit test)
 # gate exercises on the native compiler with no MCU or CubeMX dependency.
 # Domain code may not include anything hardware-specific (see
