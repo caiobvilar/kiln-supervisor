@@ -256,13 +256,43 @@ confirmed legible in the 2026-09-05 photo — **this physical unit is the
 TTL-Modbus-only variant; terminals 5/6 do NOT carry RS-485.** This closes the
 order-code open question in PLAN.md, with a negative result: the wiring facts
 under "RS-485 electrical / link parameters" above describe the KM5P family's
-`S`-variant capability, not this unit as ordered. The RS-485 client +
-register-map chain now requires one of: driving the on-board TTL Modbus port
-directly (different UART levels, not RS-485 transceiver electricals), an
-external RS-485⇄TTL converter at the instrument, or replacing/reordering the
-unit with the `S` option — a hardware-path decision for the project, not a
-firmware one. `docs/hardware/stm32f411e-disco.md` and any RS-485 transceiver
-selection should not proceed assuming RS-485 wiring until this is addressed.
+`S`-variant capability, not this unit as ordered.
+
+### TTL Modbus port — electrical spec is undocumented, hardware path decided anyway
+
+Neither vendor document gives the TTL port's electrical characteristics.
+Checked directly (2026-09-05, `pdftotext` over both source PDFs):
+
+- COEL manual §2.4 "INTERFACE SERIAL" states isolation, voltage-level
+  standard, and protocol **only for RS-485** ("Tipo de interface: Isolada
+  (50V) RS485; Níveis de tensão: Segundo a normativa EIA standard") — no
+  equivalent paragraph exists anywhere in the manual for the TTL port. No
+  voltage levels, no isolation statement, no connector/pin location. (The
+  "Nível lógico 0/1: ... 12V" lines that do appear in §2.3 are for the SSR
+  *drive outputs* OP1–4, not the serial port — do not conflate the two.)
+- Ascon Tecnologic protocol doc (`ISTR_P_K-5series_E_01_--.pdf`) is
+  protocol-only (function codes, CRC, register map) — no electrical section
+  at all, checked for "TTL"/"isolat"/"volt"/"opto" with no relevant hits.
+
+**Given this gap, and that this is a 100–240 VAC mains-powered instrument
+(order code `H`), the TTL port's isolation from the mains side cannot be
+assumed.** Bare-wiring the STM32's 3.3 V UART directly to this port is not
+something this project will do without a stated spec — see the project's
+hw-facts provenance rule and the mandatory human-present/safety-case rule
+for anything that can reach the real KM5P_r0.
+
+**Decision (2026-09-05, CG):** use a direct isolated TTL-UART link — a
+single digital-isolator module (ADuM1201/Si8641-class 2-channel isolator,
+or an equivalent off-the-shelf isolated UART bridge; specific part **not
+yet chosen**) between the STM32 UART and this port. No RS-485 transceiver
+is needed anywhere in this design (both ends are already TTL-level); this
+was chosen over an isolated RS-485⇄TTL converter at the instrument as the
+lower-hardware option of the two isolated paths considered. Depends on the
+STM32 board ending up mounted close to the KM5P (short in-panel run) —
+single-ended TTL over an isolator doesn't have RS-485's differential 1500 m
+range and is more exposed to the SSR/relay-switching EMI in this panel;
+revisit if the physical layout puts real distance between the two. Full
+reasoning in PLAN.md Decisions ("TTL hardware path").
 
 Thermocouple wiring matches input `C` (TC supported). Outputs `O`,`R`,`R`,`D`
 fit the bench picture: SSR likely modulating the heater, relays for alarm/

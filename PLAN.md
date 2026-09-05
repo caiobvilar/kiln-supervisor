@@ -33,9 +33,10 @@ project's identity is the connected supervisory product.
 - Board: `f411-disco` — **placeholder, not yet confirmed.** Reused from
   `gesture-imu`/`vibration-fault-predict` since it is the only STM32F4 already
   owned with an FPU and no display baggage. Confirm this is acceptable once
-  the I/O count is known — this board needs a UART routed through an RS-485
-  transceiver (e.g. MAX485-class, part not yet chosen) to reach the KM5P_r0,
-  plus whatever the WiFi module needs.
+  the I/O count is known — this board needs a UART routed through an
+  isolated TTL-UART digital isolator (see "TTL hardware path" decision below;
+  no RS-485 transceiver needed) to reach the KM5P_r0, plus whatever the WiFi
+  module needs.
 - Highest gate reached: **none — scaffolded, no code yet.**
 - Constraint that drives the design: **safety, not RAM or latency.** The
   KM5P_r0, not this project's own hardware, does the mains-side switching —
@@ -88,7 +89,29 @@ Link ADRs. Do not restate them here.
   (outside this repo, alongside the source PDFs). The subset this project
   needs is recorded with provenance in
   `docs/hardware/km5p-controller.md`.
-- Not yet decided: RS-485 transceiver part, WiFi module path, cloud
+- **TTL hardware path (2026-09-05): direct isolated TTL-UART link, no RS-485
+  transceiver.** This physical unit is TTL-Modbus-only (see the order-code
+  finding above) with an undocumented TTL-port electrical spec (neither the
+  COEL manual §2.4 nor the Ascon protocol doc states its voltage levels or
+  isolation — §2.4 documents isolation only for RS-485, "Isolada (50V)
+  RS485", and says nothing for TTL). Bare-wiring the STM32's 3.3 V UART
+  directly to an undocumented port on a 100–240 VAC mains-powered instrument
+  is not something this project will do without a stated spec; CG chose the
+  lower-hardware option of the two isolated paths considered (isolated
+  RS-485⇄TTL converter vs. a direct isolated TTL-UART link): a single
+  digital-isolator module (ADuM1201/Si8641-class 2-channel isolator, or an
+  equivalent off-the-shelf isolated UART bridge — specific part **not yet
+  chosen**) between the STM32 UART and the KM5P's TTL Modbus pins. No RS-485
+  transceiver is needed anywhere in this design, since both ends are already
+  TTL-level — this removes the RS-485-transceiver line item below entirely.
+  **Assumption this decision depends on:** the STM32 board ends up mounted
+  close to the KM5P (short in-panel run) — single-ended TTL over an isolator
+  is only good for short distances before EMI (SSR/relay switching nearby)
+  becomes a problem, unlike RS-485's differential 1500 m rating. Physical
+  mounting/enclosure layout is not yet decided; if the run turns out to be
+  more than a couple of meters, revisit this and switch to the RS-485⇄TTL
+  converter path instead.
+- Not yet decided: TTL-UART isolator part, WiFi module path, cloud
   dashboard target, and whether the `f411-disco` board fits the I/O budget.
 
 ## Open questions
@@ -129,20 +152,21 @@ handoff list — the human answers these between sessions.
       the Ascon protocol document independently states 1–254, so treat
       1–254 as correct. Not yet bench-tested against the real unit's actual
       accepted range.
-- [ ] **New, from the TTL-only finding:** decide the hardware path to reach
-      this unit's TTL Modbus port — on-board STM32 UART direct to TTL levels,
-      an external RS-485⇄TTL converter at the instrument (keeping RS-485 on
-      the STM32F4 side), or reordering/replacing the unit with the `S`
-      (RS-485) option. Affects the transceiver-part decision below and the
-      "RS-485 electrical / link parameters" section's applicability to this
-      physical unit.
+- [x] ~~Decide the hardware path to reach this unit's TTL Modbus port.~~
+      **RESOLVED 2026-09-05:** direct isolated TTL-UART link — a single
+      digital-isolator module between the STM32 UART and the KM5P's TTL
+      pins, no RS-485 transceiver. See "TTL hardware path" under Decisions
+      above for the full reasoning and its open dependency (short physical
+      run assumed; revisit if the STM32-to-KM5P distance turns out to be
+      more than a couple of meters).
 - [ ] Confirm `f411-disco` as the target board, or pick a different STM32F4
-      if the I/O budget doesn't fit (RS-485 transceiver + WiFi module,
+      if the I/O budget doesn't fit (TTL-UART isolator + WiFi module,
       concurrently, plus whatever UART/SPI each needs).
-- [ ] RS-485 transceiver IC on the STM32F4 side — not yet chosen. Needs a
-      part (e.g. MAX485-class) picked and verified against its own datasheet
-      for direction-control timing (DE/RE), not assumed from a generic
-      "RS-485 chip" mental model.
+- [ ] TTL-UART digital-isolator part — not yet chosen. Needs a part
+      (e.g. ADuM1201/Si8641-class, or an off-the-shelf isolated UART bridge
+      board) picked and verified against its own datasheet (propagation
+      delay vs. the KM5P's Modbus timing, isolated-side power source), not
+      assumed from a generic "opto-isolator" mental model.
 - [ ] WiFi hardware path — no WiFi-capable board is owned today. Likely an
       external module (e.g. ESP8266 in AT-command mode, or ESP32 as a
       network co-processor) bridged over UART or SPI, not something on-board.
@@ -156,6 +180,17 @@ handoff list — the human answers these between sessions.
 
 Newest last. One line per session: what moved, what broke, where you stopped.
 
+- `2026-09-05` (cont.) — Decided the TTL hardware path: checked both vendor
+  documents (COEL manual §2.4, Ascon protocol doc) for the TTL Modbus port's
+  electrical spec — neither states voltage levels, isolation, or connector
+  location (§2.4 documents isolation only for RS-485). Declined to certify
+  bare-wiring the STM32's 3.3V UART to an undocumented port on a
+  mains-powered instrument as safe. CG chose the lower-hardware isolated
+  option: a direct isolated TTL-UART digital-isolator link (no RS-485
+  transceiver needed on either side) over an isolated RS-485⇄TTL converter.
+  Recorded in PLAN.md Decisions/Open questions; specific isolator part still
+  TBD; carries an open dependency on STM32-to-KM5P mounting distance staying
+  short (EMI/single-ended-TTL limit, unlike RS-485's differential range).
 - `2026-09-05` — Implemented generic Modbus RTU client layer (fc 03/06/16) with
   bounded response timeout over the UART port seam, backed by host L1 tests (no
   hardware used); added unverified KM5P_r0 register-constants header; approved
