@@ -147,6 +147,130 @@ narrower, later-in-document range (1–254) is authoritative for firmware
 validation, but don't hardcode 255 as a legal address without checking the
 actual instrument's accepted range at the bench.
 
+## Electrical connections — does this manual describe them? Yes (§2, pp.1–4)
+
+The manual fully describes how the controller is wired (full schematic on p.1
+plus one connection figure per input/output type on pp.2–4), including the
+sensor input, control outputs, serial, and power. Transcribed 2026-09-05 from
+`Manual-de-Instrucoes-KM5P_r0.pdf`, rev 0 (POR), 02/16, cód. 59.001.207.
+General wiring notes (§2.1) are the operational interlock-relevant ones.
+
+**Status convention below:** `dc` = documented (manual-sourced), `un` =
+unverified until confirmed on the physical unit. The exact terminal numbers for
+the input/output rows come from the p.1 schematic graphic and are `un` — they
+were captured from the figure, not from a numbered table. This is the thing to
+read directly off the unit (which has been opened — see "Physical unit
+observations" at the end), since the schematic digits are small.
+
+### §2.1 General wiring notes (p.1)
+
+| Note | Status |
+|---|---|
+| Sensor cables must stay away from power / power-cable runs | dc |
+| External Zener diodes can cause measurement error (line resistance) | dc |
+| Shielded cable: bond the braid on **one** side only | dc |
+| Check line resistance; high resistance → measurement error | dc |
+
+### §2.2 Measurement input (pp.2–3) — sensor wiring
+
+| Input type | Key connection facts | Status |
+|---|---|---|
+| Thermocouple (`SEnS` T.C.) | Per EN 60584-1; ext. resistance ≤100 Ω (error +25 µV max); cold-junction auto-comp 0–50 °C (0.05 °C/°C after >20 min warm-up); input impedance >1 MΩ; use compensated, preferably shielded cable | dc |
+| Infrared sensor | Same cold-junction auto-comp; ext. resistance irrelevant; >1 MΩ | dc |
+| RTD Pt100 (3-wire) | 150 µA current injection; per EN 60751/A2; automatic line compensation to 20 Ω/wire (±0.1 % FS); the three wires must have equal resistance | dc |
+| Pt1000 / NTC / PTC | 15 µA injection (Pt1000); per EN 60751/A2; **no** line compensation | dc |
+| Voltage (V / mV) | Impedance >1 MΩ (mV), >500 kΩ (V) | dc |
+| Current 0/4–20 mA | Input impedance <53 Ω; internal 12 V ±10 % / 20 mA max aux. feed for **passive** transmitters; external supply for passive-with-external or **active** transmitters | dc |
+| Digital input | Dry contact (≤100 Ω; DI1: 10 V/6 mA, DI2: 12 V/30 mA) **or** 24 Vdc logic (high 6–24 V, low 0–3 V); minimum recognition time 150 ms; **not isolated from the sensor inputs — external double/reinforced isolation required** | dc |
+
+Factory default sensor is a **type-J thermocouple** (§5.1); the physical unit's
+actual sensor wiring is what the bench must confirm.
+
+### §2.3 Control outputs (pp.3–4) — actuator wiring
+
+| Output | Variants per order code | Key connection facts | Status |
+|---|---|---|---|
+| OP1 (Out1) | Relay **or** SSR **or** analog mA/V | Relay SPST-NO 4 A/250 VAC cosφ=1 (2 A at cosφ=0.4), 10⁵ ops; SSR logic low <0.5 V, high 12 V ±20 % / 15 mA max; analog 0/4–20 mA (galv. isolated, R_L ≤600 Ω) or 0/2–10 V (isolated, R_L ≤500 Ω) | dc |
+| OP2 (Out2) | Relay **or** SSR **or** servomotor | Relay 2 A/250 VAC (1 A cosφ=0.4); servomotor "M" variant: **Out2 = open (abre)** | dc |
+| OP3 (Out3) | Relay **or** SSR **or** servomotor | Relay 2 A/250 VAC (1 A cosφ=0.4); servomotor "M" variant: **Out3 = close (fecha)** | dc |
+| OP4 (Out4) | SSR | Logic high 12 V ±20 % / 20 mA max; **overload-protected** | dc |
+| SSRs (all) | — | **Not isolated** → external double/reinforced isolation must be provided by the SSR stage | dc |
+| mA / V / SSR wiring | — | Shielded cable required if the run exceeds 30 m | dc |
+
+Safety note (§2.3): energize only after all connections are made; config the
+parameters (input type, control mode, alarms) before attaching actuators.
+
+### §2.5 Power (p.4)
+
+| Fact | Value | Status |
+|---|---|---|
+| Supply voltages | **24 VAC/VDC ±10 %** (no polarity needed) **or** 100–240 VAC ±10 % — per order code/label | dc |
+| Wiring | ≥16 AWG (1.3 mm²), rated ≥75 °C, copper only | dc |
+| Fusing | External **1 A / 250 V fuse required** — the input is not fuse-protected | dc |
+| Key-switch note | When powered through the A01 programme-selector switch, the outputs are disabled; the unit may show "ouLd" | dc |
+
+### §4 Order code (p.5) — resolves part of the variant question
+
+Communication field: **`-` = TTL Modbus only**, **`S` = RS485 Modbus + TTL** —
+"we don't know if the physical unit has RS-485 at all" is decided by this digit
+on the nameplate. Connector field: `-` standard / `E` plug / `M` spring / `N`
+extractable. Servomotor models: Out2+Out3 coded "M". Factory defaults: sensor
+type J, configuration password 30.
+
+### Physical unit observations (IK, controller box opened)
+
+Confirmed on the unit (2026-09-05, relayed via CG):
+- **Measurement input: thermocouple.** ✓ (matches the factory-default type-J
+  setting, but the physical TC's letter code — J/K/S/R/etc. — is still to be
+  read; the KM5P `SEnS` configuration must match it for a correct reading.)
+- **Heater drive: a circuit breaker (`disjuntor`).** The heater power path is
+  switched by a disjuntor on the panel. `un`: where the controller's own output
+  stage lands is still open — a disjuntor is line-side protection/switching, not
+  a low-voltage output device, so "what the KM5P relay/SSR contact closes" is
+  still to be identified (a contactor or direct heater feed would be typical).
+- **Panel power: a simple toggle switch.** No programmable A01 key-switch noted;
+  the §2.5 "ouLd" powering note is then not in play for this panel.
+
+**Order code read off the label (2026-09-05): `KM5P` `H` `C` `O` `R` `R` `D` `-` `E` `-` `-` `P` `-` `-` `-` `-`**
+
+**CONFIRMED 2026-09-05** — a clear, legible photo of the nameplate
+(`KM5P ALIM. 1··· CC TC-RTD-V-MA-MV+DI ···`, model line `KM5PHCORRD-E--P----`,
+serial `174874/01`, date `7/2025`) resolves the earlier garbled read. Full
+model string transcribed character-for-character from the photo:
+`KM5PHCORRD-E--P----`.
+
+| Position | Code | Meaning |
+|---|---|---|
+| Supply | `H` | 100–240 VAC |
+| Analog input | `C` | J,K,R,S,T,PT100; mV, mA, V (no PTC/NTC) |
+| Output 1 | `O` | **SSR** drive (Vcc for SSR) |
+| Output 2 | `R` | relay SPST 2 A (resistive) |
+| Output 3 | `R` | relay SPST 2 A (resistive) |
+| I/O 4 | `D` | Out4 SSR + transmitter supply / DI2 |
+| **Communication** | **`-`** — **CONFIRMED** | **TTL Modbus only — NO RS-485** |
+| Connector | `E` | plug connector |
+| (unidentified) | `-` `-` `P` `-` `-` `-` `-` | Five more characters follow the connector field in the photographed code (`--P----`). §4 as transcribed into this doc only covers Supply/Analog/Output1-3/I-O4/Communication/Connector — it does not document what these trailing positions mean. Not blocking (the Communication field is unambiguous), but flagged as an untranscribed remainder of the order-code table; check the manual's §4 table again if these positions ever matter (e.g. alarm/output-range options). |
+
+**Milestone-relevant, no longer ambiguous:** the Communication digit is `-`,
+confirmed legible in the 2026-09-05 photo — **this physical unit is the
+TTL-Modbus-only variant; terminals 5/6 do NOT carry RS-485.** This closes the
+order-code open question in PLAN.md, with a negative result: the wiring facts
+under "RS-485 electrical / link parameters" above describe the KM5P family's
+`S`-variant capability, not this unit as ordered. The RS-485 client +
+register-map chain now requires one of: driving the on-board TTL Modbus port
+directly (different UART levels, not RS-485 transceiver electricals), an
+external RS-485⇄TTL converter at the instrument, or replacing/reordering the
+unit with the `S` option — a hardware-path decision for the project, not a
+firmware one. `docs/hardware/stm32f411e-disco.md` and any RS-485 transceiver
+selection should not proceed assuming RS-485 wiring until this is addressed.
+
+Thermocouple wiring matches input `C` (TC supported). Outputs `O`,`R`,`R`,`D`
+fit the bench picture: SSR likely modulating the heater, relays for alarm/
+control outputs.
+
+Still open: the exact TC letter code (J/K/…) and the terminal numbers read
+directly off the unit (to promote the `un` input/output rows above).
+
 ## What this manual does NOT give — the real gap
 
 **Superseded 2026-07-30 for points 1 and 3 below** — see "RESOLVED
@@ -179,13 +303,13 @@ before that document arrived.
    codes are supported — 03/06/16 read/write holding registers being the
    typical Modbus RTU set — nor which registers, if any, are read-only vs
    read-write).
-4. **Ordering-code confirmation still needed.** §4 (p.5), "Informações para
-   Pedido", shows the model's "Comunicação" field as either `-` = TTL
-   Modbus only, or `S` = RS485 Modbus + TTL. This manual describes the
-   instrument family generically; it doesn't confirm which variant the
-   physical KM5P_r0 unit actually is. If it was ordered without the `S`
-   option, terminals 5/6 may not carry RS-485 at all. Check the unit's
-   model code / nameplate before wiring anything to those terminals.
+4. **Ordering-code confirmation: RESOLVED 2026-09-05, negative result.** §4
+   (p.5), "Informações para Pedido", shows the model's "Comunicação" field as
+   either `-` = TTL Modbus only, or `S` = RS485 Modbus + TTL. A legible
+   nameplate photo confirms the physical unit's model code is
+   `KM5PHCORRD-E--P----` — Communication field `-`, i.e. **TTL Modbus only.
+   Terminals 5/6 do NOT carry RS-485 on this unit.** See "Physical unit
+   observations" above for the full breakdown.
 
 **Conclusion, as of 2026-07-29: this instruction manual establishes the
 physical/electrical RS-485 link and the parameter *names*, but a separate

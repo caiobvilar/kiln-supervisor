@@ -32,10 +32,11 @@ table is recorded with full provenance in this repo.
 
 | Fact | Value | Status |
 |---|---|---|
-| RS-485 link | Isolated (50 V), Modbus RTU, 8N1, 1200–38400 baud | **verified** — COEL manual §2.4 |
-| Wiring | D− = terminal 6, D+ = terminal 5 | **verified** — COEL manual |
+| RS-485 link (KM5P family, `S` option) | Isolated (50 V), Modbus RTU, 8N1, 1200–38400 baud | **verified** — COEL manual §2.4 |
+| Wiring (KM5P family, `S` option) | D− = terminal 6, D+ = terminal 5 | **verified** — COEL manual |
 | PV register | register 1 (0x0001), live measured temperature | documented — **pending bench read-back** |
 | Instrument address | 1–254 (`Add`), corroborated across both vendor docs | documented — **pending bench read-back** |
+| **This physical unit's comms variant** | Nameplate model code `KM5PHCORRD-E--P----` → Communication field `-` = **TTL Modbus only, no RS-485** | **confirmed** — nameplate photo, 2026-09-05 |
 
 Full provenance in [docs/hardware/km5p-controller.md](docs/hardware/km5p-controller.md).
 
@@ -74,8 +75,12 @@ the register map is bench-verified. SRS + G1 come first.
   The cost of that assumption was a full search campaign; the correct first
   move was to request the protocol document from the vendor up front.
 - The order-code variant question (does this unit even have RS-485?) should
-  have been checked on the nameplate before any protocol work — it still is
-  not confirmed, and it gates whether any of the wiring facts apply.
+  have been checked on the nameplate before any protocol work. It's now
+  confirmed (2026-09-05, nameplate photo) — and the answer is no: this unit
+  is TTL-Modbus-only. All the RS-485 wiring facts above describe the KM5P
+  family's `S` option, not this physical unit; the project now needs a
+  hardware-path decision (direct TTL UART, an external RS-485⇄TTL converter,
+  or a different unit) before any transceiver gets picked.
 
 ## License
 
