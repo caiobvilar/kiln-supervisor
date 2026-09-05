@@ -160,7 +160,8 @@ Notes:
 - Byte-count mismatch on fc 03 (excess/short) → ERR_RESPONSE.
 - Exception reply (`frame[1] & 0x80`) → ERR_RESPONSE immediately, before timeout.
 - Params: count 0 / count 17 / count>cap / NULL out → ERR_PARAM with zero tx bytes.
-- Clock already past deadline before any response → ERR_TIMEOUT.
+- The deadline is computed at poll start (now + timeout), so a "clock already past
+  the deadline at entry" state is unreachable by construction.
 
 Verification gates (all clean at `-j2`):
 - `ctest --test-dir build -j2` host suite green.
